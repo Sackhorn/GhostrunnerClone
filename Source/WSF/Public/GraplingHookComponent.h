@@ -10,7 +10,6 @@ class AWSFCharacter;
 #include "WSF/WSFCharacter.h"
 #include "GraplingHookComponent.generated.h"
 
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class WSF_API UGraplingHookComponent : public USceneComponent
 {

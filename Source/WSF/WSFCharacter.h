@@ -3,12 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-
-
-#include "GraplingHookComponent.h"
 #include "GameFramework/Character.h"
-#include "Widgets/Notifications/SProgressBar.h"
 
 #include "WSFCharacter.generated.h"
 
