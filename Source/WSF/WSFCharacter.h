@@ -31,6 +31,9 @@ class AWSFCharacter : public ACharacter
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	class USkeletalMeshComponent* FP_Gun;
 
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	class UStaticMeshComponent* FP_Sword;
+
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	class USceneComponent* FP_MuzzleLocation;
@@ -214,7 +217,6 @@ public:
 	UPROPERTY(EditAnywhere, Category=Wallrun)
 	float JumpOffDirectionDeadzone = 10.0f;
 
-	
 	//////////////////////////////////////////////////////////////
 	/*                       DASH                               */
 	bool bIsDashDisabledTimeout;

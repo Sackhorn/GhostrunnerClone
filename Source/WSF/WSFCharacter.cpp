@@ -101,6 +101,13 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
 	// FP_Gun->SetupAttachment(Mesh1P, TEXT("GripPoint"));
 	FP_Gun->SetupAttachment(RootComponent);
 
+	FP_Sword = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FP_Sword"));
+	FP_Sword->SetOnlyOwnerSee(true);			// only the owning player will see this mesh
+	FP_Sword->bCastDynamicShadow = false;
+	FP_Sword->CastShadow = false;
+	// FP_Sword->SetupAttachment(Mesh1P, TEXT("GripPoint"));
+	FP_Sword->SetupAttachment(RootComponent);
+
 	FP_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
 	FP_MuzzleLocation->SetupAttachment(FP_Gun);
 	FP_MuzzleLocation->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
@@ -143,7 +150,9 @@ void AWSFCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
-	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+	// FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+	FP_Sword->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+	FP_Sword->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepRelative, true), TEXT("GripPoint"));
 
 	// Show or hide the two versions of the gun based on whether or not we're using motion controllers.
 	if (bUsingMotionControllers)
@@ -252,7 +261,9 @@ void AWSFCharacter::OnFire()
 	{
 		// Get the animation object for the arms mesh
 		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
-		if (AnimInstance != NULL)
+		UAnimMontage* Montage = AnimInstance->GetCurrentActiveMontage();
+		bool isTheSame = Montage == FireAnimation;
+		if (AnimInstance != NULL && !isTheSame)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
