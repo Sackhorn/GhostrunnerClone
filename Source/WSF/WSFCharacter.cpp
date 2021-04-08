@@ -73,7 +73,7 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
 	// Generate Console Variables
 	CVarVisualizeWallrunVectors = IConsoleManager::Get().RegisterConsoleVariable(
         TEXT("VisualizeWallrun"),
-        true,
+        false,
         TEXT("Shows Wallrun vectors \n"),
         ECVF_Scalability | ECVF_RenderThreadSafe);
 
@@ -173,6 +173,13 @@ void AWSFCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 {
 	// set up gameplay key bindings
 	check(PlayerInputComponent);
+	
+	FInputActionBinding ResetPressed("Reset", IE_Pressed);
+	ResetPressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
+	{
+		UGameplayStatics::OpenLevel(GetWorld(), "FirstPersonExampleMap");
+	});
+	PlayerInputComponent->AddActionBinding(ResetPressed);
 
 	// Bind jump events
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
