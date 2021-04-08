@@ -19,9 +19,6 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* FP_Gun;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
-	FVector GunOffset;
-	
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class AWSFProjectile> ProjectileClass;
 
