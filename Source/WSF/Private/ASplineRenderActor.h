@@ -41,6 +41,8 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	// virtual void BeginDestroy() override;
 	virtual void Tick(float DeltaTime) override;
-
+#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
 };

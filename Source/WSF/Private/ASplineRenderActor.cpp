@@ -83,6 +83,7 @@ void AASplineRenderActor::Tick(float DeltaTime)
 
 }
 
+#if WITH_EDITOR
 void AASplineRenderActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	for(auto& splineToRemove: SplineMeshComponents)
@@ -109,4 +110,6 @@ void AASplineRenderActor::PostEditChangeProperty(FPropertyChangedEvent& Property
 	}
 	BaseSplineMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
+
+#endif
 
