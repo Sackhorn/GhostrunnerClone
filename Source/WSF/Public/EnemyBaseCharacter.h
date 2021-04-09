@@ -3,6 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "ProceduralMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "WSF/WSFProjectile.h"
 
@@ -15,13 +18,24 @@ class WSF_API AEnemyBaseCharacter : public ACharacter
 	AEnemyBaseCharacter();
 public:
 	virtual void BeginPlay() override;
-	
+	UFUNCTION()
+	void HandleCollision(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	                     FVector NormalImpulse, const FHitResult& Hit);
+
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* FP_Gun;
 
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class AWSFProjectile> ProjectileClass;
 
+	void GnerateProcMesh();
+	
+	UPROPERTY(VisibleAnywhere)
+	UProceduralMeshComponent* ProcMesh;
+	
+	UPROPERTY(VisibleAnywhere)
+	UPoseableMeshComponent* PoseableMesh;
+	
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	class USceneComponent* FP_MuzzleLocation;
 
