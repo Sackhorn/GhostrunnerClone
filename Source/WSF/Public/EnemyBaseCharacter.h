@@ -28,10 +28,24 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class AWSFProjectile> ProjectileClass;
 
-	void GnerateProcMesh();
+	void GenerateProcMesh();
+	void DoRagdoll();
+	void OnDeath();
+	void DisableAI();
+	void DetachGun();
+	bool isDead;
 	
 	UPROPERTY(VisibleAnywhere)
 	UProceduralMeshComponent* ProcMesh;
+	
+	UPROPERTY(VisibleAnywhere)
+	UProceduralMeshComponent* ProcMesh2;
+
+	UPROPERTY(VisibleAnywhere)
+	USkeletalMeshComponent* SkelMesh;
+
+	UPROPERTY(EditAnywhere)
+	float RagDollForce;
 	
 	UPROPERTY(VisibleAnywhere)
 	UPoseableMeshComponent* PoseableMesh;

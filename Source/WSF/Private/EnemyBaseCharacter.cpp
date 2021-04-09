@@ -3,12 +3,15 @@
 
 #include "EnemyBaseCharacter.h"
 
+#include "AIController.h"
+#include "BrainComponent.h"
 #include "SkeletalRenderPublic.h"
 #include "Components/CapsuleComponent.h"
 #include "ProceduralMeshComponent/Public/ProceduralMeshComponent.h"
+#include "ProceduralMeshComponent/Public/KismetProceduralMeshLibrary.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "Components/SkinnedMeshComponent.h"
-#include "ProceduralMeshComponent/Public/KismetProceduralMeshLibrary.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyBaseCharacter::AEnemyBaseCharacter()
 {
@@ -24,7 +27,11 @@ AEnemyBaseCharacter::AEnemyBaseCharacter()
 
 	ProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMesh"));
 	ProcMesh->SetupAttachment(RootComponent);
-	ProcMesh->SetVisibility(true);
+	ProcMesh->SetVisibility(false);
+
+	ProcMesh2 = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMesh2"));
+	ProcMesh2->SetupAttachment(RootComponent);
+	ProcMesh2->SetVisibility(false);
 }
 
 void AEnemyBaseCharacter::BeginPlay()
@@ -37,13 +44,36 @@ void AEnemyBaseCharacter::BeginPlay()
 
 void AEnemyBaseCharacter::HandleCollision(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if(OtherActor->GetClass()->IsChildOf(AWSFProjectile::StaticClass()))
+	if(OtherActor->GetClass()->IsChildOf(AWSFProjectile::StaticClass()) && !isDead)
 	{
-		GnerateProcMesh();		
+		isDead = true;
+		OnDeath();
 	}
 }
 
-void AEnemyBaseCharacter::GnerateProcMesh()
+void AEnemyBaseCharacter::OnDeath()
+{
+	GenerateProcMesh();
+	DoRagdoll();
+	DetachGun();
+	DisableAI();
+}
+
+void AEnemyBaseCharacter::DisableAI()
+{
+	Cast<AAIController>(GetController())->BrainComponent->Deactivate();
+}
+
+void AEnemyBaseCharacter::DetachGun()
+{
+	FVector RagDollDirection = GetWorld()->GetFirstPlayerController()->GetTargetLocation() - GetActorLocation();
+	FP_Gun->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	FP_Gun->SetCollisionProfileName("BlockAll");
+	FP_Gun->SetSimulatePhysics(true);
+	FP_Gun->SetAllBodiesBelowSimulatePhysics("Root_Bone", true);
+}
+
+void AEnemyBaseCharacter::GenerateProcMesh()
 {
 	auto CharMesh = GetMesh();
 	TArray<FVector> SkinnedVertices;
@@ -54,13 +84,13 @@ void AEnemyBaseCharacter::GnerateProcMesh()
 		CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].SkinWeightVertexBuffer);
 	auto IndexBuffer = CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].MultiSizeIndexContainer.GetIndexBuffer();
 	auto VertexColor = &CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].StaticVertexBuffers.ColorVertexBuffer;
-	
-	
+	TArray<FVector> SkinnedTangent;
+	USkeletalMeshComponent::ComputeSkinnedTangentBasis(CharMesh, SkinnedTangent, CachedRefToLocal,
+		CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0],
+		CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].SkinWeightVertexBuffer);
 	TArray<FColor> Color;
 	TArray<int32> Triangles;
-	TArray<FVector> Normals;
 	TArray<FVector2D> UVs;
-	TArray<FProcMeshTangent> Tangents;
 	for(int i=0; i < IndexBuffer->Num(); i++)
 	{
 		Triangles.Add(IndexBuffer->Get(i));
@@ -68,19 +98,41 @@ void AEnemyBaseCharacter::GnerateProcMesh()
 	VertexColor->GetVertexColors(Color);
 	for(int32 i=0; i < SkinnedVertices.Num(); i++)
 	{
-		Normals.Add(FVector(0.0f));
 		UVs.Add(CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].StaticVertexBuffers.StaticMeshVertexBuffer.GetVertexUV(i, 0));
-		auto X = CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].StaticVertexBuffers.StaticMeshVertexBuffer.VertexTangentX(i);
-		auto Z = CharMesh->MeshObject->GetSkeletalMeshRenderData().LODRenderData[0].StaticVertexBuffers.StaticMeshVertexBuffer.VertexTangentY(i);
-		Tangents.Add(FProcMeshTangent(X.X, X.Y, X.Z));
-		Normals.Add(FVector(Z));
 	}
-	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(SkinnedVertices, Triangles, UVs, Normals, Tangents);
-	ProcMesh->CreateMeshSection(0, SkinnedVertices, Triangles, Normals, UVs, Color, Tangents, false);
+	TArray<FVector> MyNormals; 
+	TArray<FProcMeshTangent> MyTangentsX;
+	for(int32 i = 0; i < SkinnedVertices.Num(); i++)
+	{
+		FVector TangentX = SkinnedTangent[2*i];
+		FVector TangentZ = SkinnedTangent[2*i + 1];
+		FVector TangentY = TangentX ^ TangentZ;
+		TangentX.Normalize();
+		TangentZ.Normalize();
+		MyNormals.Add(TangentZ);
+		TangentX -= TangentZ * (TangentZ | TangentX);
+		TangentX.Normalize();
+		const bool bFlipBitangent = ((TangentZ ^ TangentX) | TangentY) < 0.f;
+		MyTangentsX.Add(FProcMeshTangent(TangentX, bFlipBitangent));
+	}
+	ProcMesh->CreateMeshSection(0, SkinnedVertices, Triangles, MyNormals, UVs, Color, MyTangentsX, false);
 	ProcMesh->SetWorldTransform(CharMesh->GetComponentToWorld());
 	ProcMesh->SetMaterial(0, CharMesh->GetMaterial(0));
 	ProcMesh->SetMaterial(1, CharMesh->GetMaterial(1));
-	UE_LOG(LogTemp, Warning, TEXT("Shits calculated"));
+	UKismetProceduralMeshLibrary::SliceProceduralMesh(ProcMesh, GetActorLocation(), GetActorUpVector(), true, ProcMesh2, EProcMeshSliceCapOption::NoCap, CharMesh->GetMaterial(0));
+	ProcMesh2->SetVisibility(false);
+}
+
+void AEnemyBaseCharacter::DoRagdoll()
+{
+	auto CharMesh = GetMesh();
+	GetCapsuleComponent()->SetCollisionProfileName("NoCollision");
+	GetCharacterMovement()->DisableMovement();	
+	CharMesh->SetAllBodiesBelowSimulatePhysics("pelvis", true);
+	CharMesh->SetAllBodiesBelowPhysicsBlendWeight("pelvis", 1.0f);
+	FVector RagDollDirection = GetWorld()->GetFirstPlayerController()->GetTargetLocation() - GetActorLocation();
+	RagDollDirection.Normalize();
+	CharMesh->AddForceToAllBodiesBelow(RagDollDirection * RagDollForce, "pelvis");
 }
 
 void AEnemyBaseCharacter::OnFire()
