@@ -11,7 +11,9 @@
 #include "ProceduralMeshComponent/Public/KismetProceduralMeshLibrary.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "Components/SkinnedMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "WSF/WSFCharacter.h"
 
 AEnemyBaseCharacter::AEnemyBaseCharacter()
 {
@@ -38,23 +40,24 @@ void AEnemyBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	FP_Gun->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
-	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AEnemyBaseCharacter::HandleCollision);
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AEnemyBaseCharacter::HandleCollision);
 	
 }
 
-void AEnemyBaseCharacter::HandleCollision(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void AEnemyBaseCharacter::HandleCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	if(OtherActor->GetClass()->IsChildOf(AWSFProjectile::StaticClass()) && !isDead)
+	if(OtherActor->GetClass()->IsChildOf(AWSFCharacter::StaticClass()) && !isDead && OtherComp->StaticClass()->IsChildOf(USphereComponent::StaticClass()))
 	{
-		isDead = true;
-		OnDeath();
+		FVector ForceDirection = OtherActor->GetActorLocation() - GetActorLocation();
+		OnDeath(ForceDirection);
 	}
 }
 
-void AEnemyBaseCharacter::OnDeath()
+void AEnemyBaseCharacter::OnDeath(const FVector& ForceDirection)
 {
+	isDead = true;
 	GenerateProcMesh();
-	DoRagdoll();
+	DoRagdoll(ForceDirection);
 	DetachGun();
 	DisableAI();
 }
@@ -123,16 +126,14 @@ void AEnemyBaseCharacter::GenerateProcMesh()
 	ProcMesh2->SetVisibility(false);
 }
 
-void AEnemyBaseCharacter::DoRagdoll()
+void AEnemyBaseCharacter::DoRagdoll(const FVector& ForceDirection)
 {
 	auto CharMesh = GetMesh();
-	GetCapsuleComponent()->SetCollisionProfileName("NoCollision");
+	GetCapsuleComponent()->SetCollisionProfileName("OverlapAll");
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCharacterMovement()->DisableMovement();	
 	CharMesh->SetAllBodiesBelowSimulatePhysics("pelvis", true);
-	CharMesh->SetAllBodiesBelowPhysicsBlendWeight("pelvis", 1.0f);
-	FVector RagDollDirection = GetWorld()->GetFirstPlayerController()->GetTargetLocation() - GetActorLocation();
-	RagDollDirection.Normalize();
-	CharMesh->AddForceToAllBodiesBelow(RagDollDirection * RagDollForce, "pelvis");
+	CharMesh->AddImpulse(ForceDirection * RagDollForce);
 }
 
 void AEnemyBaseCharacter::OnFire()

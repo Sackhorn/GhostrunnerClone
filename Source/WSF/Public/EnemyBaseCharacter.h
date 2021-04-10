@@ -19,8 +19,7 @@ class WSF_API AEnemyBaseCharacter : public ACharacter
 public:
 	virtual void BeginPlay() override;
 	UFUNCTION()
-	void HandleCollision(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	                     FVector NormalImpulse, const FHitResult& Hit);
+	void HandleCollision(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* FP_Gun;
@@ -28,9 +27,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class AWSFProjectile> ProjectileClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack)
+	float BeforeShootDelay = 1.0f;
+
 	void GenerateProcMesh();
-	void DoRagdoll();
-	void OnDeath();
+	void DoRagdoll(const FVector& ForceDirection);
+	void OnDeath(const FVector& ForceDirection);
 	void DisableAI();
 	void DetachGun();
 	bool isDead;
