@@ -8,6 +8,20 @@ public class WSF : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay", "UMG", "Slate", "ProceduralMeshComponent", "RenderCore", "RHI", "AIModule"});
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"HeadMountedDisplay", 
+			"UMG", 
+			"Slate",
+			"SlateCore",
+			"ProceduralMeshComponent", 
+			"RenderCore", 
+			"RHI", 
+			"AIModule"
+		});
 	}
 }

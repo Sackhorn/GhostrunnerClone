@@ -58,4 +58,5 @@ private:
 	//Why does using static_cast here returns Null or something improper ?
 	TWeakObjectPtr<AWSFCharacter> Character;
 	float DashRunningTime = 0.0f;
+	FVector VerticalVelocity;
 };

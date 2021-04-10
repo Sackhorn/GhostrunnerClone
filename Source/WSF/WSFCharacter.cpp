@@ -4,7 +4,7 @@
 
 // #include "AITypes.h"
 #include "DrawDebugHelpers.h"
-#include "WSFProjectile.h"
+#include "EnemyBaseCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -55,6 +55,11 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
+	ReceiveHitCapsule = CreateDefaultSubobject<UCapsuleComponent>("ReceiveHitCapsule");
+	ReceiveHitCapsule->SetupAttachment(RootComponent);
+	ReceiveHitCapsule->InitCapsuleSize(130.0f, 80.0f);
+	
+
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
@@ -75,6 +80,12 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
         TEXT("VisualizeWallrun"),
         false,
         TEXT("Shows Wallrun vectors \n"),
+        ECVF_Scalability | ECVF_RenderThreadSafe);
+
+	CVarVisualizeSword = IConsoleManager::Get().RegisterConsoleVariable(
+        TEXT("VisualizeSword"),
+        false,
+        TEXT("Shows Sweep colliders for the sword attack \n"),
         ECVF_Scalability | ECVF_RenderThreadSafe);
 
 	CVarUseDebugCamera = IConsoleManager::Get().RegisterConsoleVariable(
@@ -148,7 +159,7 @@ void AWSFCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
-
+	ReceiveHitCapsule->OnComponentBeginOverlap.AddDynamic(this, &AWSFCharacter::OnHit);
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	// FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
 	// FP_Sword->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -173,6 +184,12 @@ void AWSFCharacter::BeginPlay()
 		DashIndicatorWidget->AddToViewport();
 		auto Widget = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("ProgressBar_0")));
 		DashIndicatorProgressBar = MoveTemp(Widget);
+		auto Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image")));
+		BloodSplashes.Add(MoveTemp(Image));
+		Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image_1")));
+		BloodSplashes.Add(MoveTemp(Image));
+		Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image_2")));
+		BloodSplashes.Add(MoveTemp(Image));
 	}
 }
 
@@ -221,36 +238,44 @@ void AWSFCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction("GrapplingHook", IE_Pressed, this, &AWSFCharacter::BeginGrapplingHook);
 }
 
-void AWSFCharacter::OnFire()
+void AWSFCharacter::TryPerformAttack()
 {
-	// try and fire a projectile
-	if (ProjectileClass != NULL)
+	if(!bIsSwordAttackMontage)
 	{
-		UWorld* const World = GetWorld();
-		if (World != NULL)
+		return;
+	}
+	TArray<FHitResult> HitResults;
+	FVector Forward = FirstPersonCameraComponent->GetForwardVector();
+	FVector Right = FirstPersonCameraComponent->GetRightVector();
+	
+	FVector Start = GetActorLocation() + Forward * ForwardSphereOffset + Right * -LeftSphereOffset;
+	FVector End = Start + GetActorRightVector() * RightSphereOffset;
+	if(CVarVisualizeSword->GetBool())
+	{
+		DrawDebugSphere(GetWorld(), Start, SphereRadius, 50, FColor::Red, false, 0.5f);
+		DrawDebugSphere(GetWorld(), End, SphereRadius, 50, FColor::Red, false, 0.5f);
+	}
+	FCollisionShape ColShape = FCollisionShape::MakeSphere(SphereRadius);
+	bool bHitSword = GetWorld()->SweepMultiByObjectType(HitResults,
+        Start,
+        End,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn),
+        ColShape);
+	for(FHitResult Hit : HitResults)
+	{
+		auto Enemy = Cast<AEnemyBaseCharacter>(Hit.Actor);
+		if(Enemy)
 		{
-			if (bUsingMotionControllers)
-			{
-				const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
-				const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
-				World->SpawnActor<AWSFProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
-			}
-			else
-			{
-				const FRotator SpawnRotation = GetControlRotation();
-				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
-
-				//Set Spawn Collision Handling Override
-				FActorSpawnParameters ActorSpawnParams;
-				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-
-				// spawn the projectile at the muzzle
-				World->SpawnActor<AWSFProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-			}
+			FVector HitDirection = GetActorLocation() - Enemy->GetActorLocation();
+			HitDirection.Normalize();
+			Enemy->OnDeath(HitDirection);
 		}
 	}
+}
 
+void AWSFCharacter::OnFire()
+{
 	// try and play the sound if specified
 	if (FireSound != NULL)
 	{
@@ -351,6 +376,7 @@ bool AWSFCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInput
 
 void AWSFCharacter::Tick(float DeltaSeconds)
 {
+	TryPerformAttack();
 	bIsWallrunAvailable = WallrunCheckAndTick() && !bIsWallrunDisabledTimeout;
 	TEnumAsByte<EMovementMode> MovementMode =  GetCharacterMovement()->MovementMode;
 	uint8 CustomMovementMode = GetCharacterMovement()->CustomMovementMode;
@@ -609,6 +635,7 @@ void AWSFCharacter::UpdateWallrunRotation(float DeltaSeconds)
 /// DASH
 
 //TODO: Slight player sway and rotation
+//TODO: Only start after pressed for longer than
 void AWSFCharacter::SidewaysDash()
 {
 	if(bIsDashDisabledTimeout)
@@ -671,4 +698,13 @@ void AWSFCharacter::BeginGrapplingHook()
 		UWSFCharacterMovementComponent* MovementComponent = static_cast<UWSFCharacterMovementComponent*>(GetMovementComponent());
 		MovementComponent->SetMovementMode(MOVE_Custom, CUSTOM_GrapplingHook);
 	}
+}
+
+void AWSFCharacter::OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{
+	for(TSharedPtr<SWidget> Widget : BloodSplashes)
+	{
+		Widget->SetVisibility(EVisibility::Visible);
+	}
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), DeathTimeDilitation);
 }

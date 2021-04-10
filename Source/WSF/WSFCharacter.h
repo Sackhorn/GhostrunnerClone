@@ -60,6 +60,9 @@ class AWSFCharacter : public ACharacter
 	/** Motion controller (left hand) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMotionControllerComponent* L_MotionController;
+
+	UPROPERTY(VisibleAnywhere)
+	class UCapsuleComponent* ReceiveHitCapsule;
 	
 	
 
@@ -100,6 +103,8 @@ public:
 	/** Whether to use motion controller location for aiming. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 	uint32 bUsingMotionControllers : 1;
+
+	TArray<TSharedPtr<SWidget>> BloodSplashes;
 
 protected:
 	
@@ -143,6 +148,7 @@ protected:
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+	void TryPerformAttack();
 	// End of APawn interface
 
 	/* 
@@ -256,8 +262,31 @@ public:
 	bool bIsGrapplingHookAvailable;
 	FVector GrapplingHookVelocity;
 	void BeginGrapplingHook();
+	
+
+	           
 	float GravityCoefficient;
-		
+
+	////////////////////////////////////////////////////////////////////////
+	/*                       SWORD ATTACK                              */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	float ForwardSphereOffset = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	float LeftSphereOffset = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	float RightSphereOffset = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	float SphereRadius = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	float DeathTimeDilitation = 0.02;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category=SwordAttack)
+	bool bIsSwordAttackMontage;
+	
 	
 	/** Returns Mesh1P subobject **/
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
@@ -266,6 +295,9 @@ public:
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
 private:
+	UFUNCTION()
+	void OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	           int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	//////////////////////////////////////////////////////////////
 	/*                       DASH                               */
 	void Dash();
@@ -302,6 +334,7 @@ private:
 	FVector PlayerAddedJumpOffDirection();
 	IConsoleVariable* CVarVisualizeWallrunVectors; 
 	IConsoleVariable* CVarUseDebugCamera;
+	IConsoleVariable* CVarVisualizeSword;
 	TPair<ETraceSide, FHitResult> PerformTraces(const TArray<TPair<ETraceSide, FVector>>& TracingVectors);
 	void SetupTracingVectors(TArray<TPair<ETraceSide, FVector>>* TracingVectors);
 	bool WallrunCheckAndTick();

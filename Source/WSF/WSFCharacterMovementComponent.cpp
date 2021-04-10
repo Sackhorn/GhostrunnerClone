@@ -3,7 +3,10 @@
 
 #include "WSFCharacterMovementComponent.h"
 
+
+#include "DrawDebugHelpers.h"
 #include "WSFCharacter.h"
+#include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 
@@ -14,6 +17,7 @@ void UWSFCharacterMovementComponent::OnMovementModeChanged(EMovementMode Previou
 	if(MovementMode == MOVE_Custom)
 	{
 		Acceleration = FVector::ZeroVector;
+		VerticalVelocity = FVector::ZeroVector;
 	}
 	if(MovementMode == MOVE_Custom && CustomMovementMode == CUSTOM_GrapplingHook)
 	{
@@ -44,7 +48,7 @@ void UWSFCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iteration
 	else if(CustomMovementMode == CUSTOM_Dash)
 	{
 		//Resolve Dashing process
-		FVector DashMovementDirection = Character->GetActorForwardVector();
+		FVector DashMovementDirection = Character->GetFirstPersonCameraComponent()->GetForwardVector();
 		if (DashRunningTime > DashDuration)
 		{
 			Velocity = DashMovementDirection * DashVelocity * DashResidueVelocityPercentage;
@@ -60,6 +64,9 @@ void UWSFCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iteration
 		float projectionLenght = FVector::DotProduct(Acceleration, Character->GetActorRightVector());
 		FVector SidewaysDirection = projectionLenght * Character->GetActorRightVector();
 		Velocity = SidewaysDirection * Character->SidewayDashMoveSpeed;
+		Acceleration = FVector(0.0f, 0.0f, GetGravityZ());
+		VerticalVelocity += Acceleration * deltaTime;
+		Velocity += VerticalVelocity;
 	}
 	else if(CustomMovementMode == CUSTOM_GrapplingHook)
 	{
