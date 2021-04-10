@@ -232,7 +232,7 @@ void AWSFCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAxis("LookUp", this, &AWSFCharacter::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AWSFCharacter::LookUpAtRate);
 
-	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &AWSFCharacter::SidewaysDash);
+	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &AWSFCharacter::BeginSidewaysDash);
 	PlayerInputComponent->BindAction("Dash", IE_Released, this, &AWSFCharacter::EndSidewayDash);
 
 	PlayerInputComponent->BindAction("GrapplingHook", IE_Pressed, this, &AWSFCharacter::BeginGrapplingHook);
@@ -635,25 +635,33 @@ void AWSFCharacter::UpdateWallrunRotation(float DeltaSeconds)
 /// DASH
 
 //TODO: Slight player sway and rotation
-//TODO: Only start after pressed for longer than
-void AWSFCharacter::SidewaysDash()
+//TODO: Only start after pressed for longer than some debounce time
+void AWSFCharacter::BeginSidewaysDash()
 {
 	if(bIsDashDisabledTimeout)
 	{
 		return;
 	}
 	bIsDashDisabledTimeout=true;
+	ensureAlwaysMsgf(SidewaysDashMaxTime >= DebounceTime,
+		TEXT("DebounceTime is Higher than SidewaysDashMaxTime this will cause issues with PlayerCharacter"));
+	GetWorldTimerManager().SetTimer(SidewayDashTimer, this, &AWSFCharacter::EndSidewayDash, SidewaysDashMaxTime, false);
+	GetWorldTimerManager().SetTimer(DebounceDashTimer, this, &AWSFCharacter::PerformSidewaysDash, DebounceTime, false);
+}
+
+void AWSFCharacter::PerformSidewaysDash()
+{
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), SidewaysDashTimeDilitation);
 	this->CustomTimeDilation = 1.0f;
 	UWSFCharacterMovementComponent* MovementComponent = static_cast<UWSFCharacterMovementComponent*>(GetMovementComponent());
 	MovementComponent->SetMovementMode(MOVE_Custom, CUSTOM_SidewaysDash);
-	GetWorldTimerManager().SetTimer(SidewayDashTimer, this, &AWSFCharacter::EndSidewayDash, SidewaysDashMaxTime, false);
 }
 
 void AWSFCharacter::EndSidewayDash()
 {
 	if(GetWorldTimerManager().IsTimerActive(SidewayDashTimer))
 	{
+		GetWorldTimerManager().ClearTimer(DebounceDashTimer);
 		GetWorldTimerManager().ClearTimer(SidewayDashTimer);
 		UWSFCharacterMovementComponent* MovementComponent = static_cast<UWSFCharacterMovementComponent*>(GetMovementComponent());
 		//We need this because player may release Dash (Shift) key before timer runs out

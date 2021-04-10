@@ -257,6 +257,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SidewaysDash)
 	float SidewayDashMoveSpeed = 0.5;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=SidewaysDash)
+	float DebounceTime = 0.1;
+	
 	////////////////////////////////////////////////////////////////////////
 	/*                       GRAPPLING HOOK                              */
 	bool bIsGrapplingHookAvailable;
@@ -315,9 +318,11 @@ private:
 	
 	//////////////////////////////////////////////////////////////
 	/*                       SIDEWAYS DASH                     */
-	void SidewaysDash();
+	void BeginSidewaysDash();
+	void PerformSidewaysDash();
 	void EndSidewayDash();
 	FTimerHandle SidewayDashTimer;
+	FTimerHandle DebounceDashTimer;
 	
 	
 	/////////////////////////////////////	
