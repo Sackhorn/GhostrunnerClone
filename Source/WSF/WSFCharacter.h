@@ -265,9 +265,9 @@ public:
 	bool bIsGrapplingHookAvailable;
 	FVector GrapplingHookVelocity;
 	void BeginGrapplingHook();
-	
+	void CleanGameplayKeyBindings();
 
-	           
+
 	float GravityCoefficient;
 
 	////////////////////////////////////////////////////////////////////////

@@ -708,6 +708,20 @@ void AWSFCharacter::BeginGrapplingHook()
 	}
 }
 
+void AWSFCharacter::CleanGameplayKeyBindings()
+{
+	for(int i = 0; i < InputComponent->GetNumActionBindings(); i++)
+	{
+		InputComponent->RemoveActionBinding(i);
+	}
+	FInputActionBinding ResetPressed("Reset", IE_Pressed);
+	ResetPressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
+	{
+		UGameplayStatics::OpenLevel(GetWorld(), "FirstPersonExampleMap");
+	});
+	InputComponent->AddActionBinding(ResetPressed);
+}
+
 void AWSFCharacter::OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
 	for(TSharedPtr<SWidget> Widget : BloodSplashes)
@@ -715,4 +729,5 @@ void AWSFCharacter::OnHit(UPrimitiveComponent* OverlappedComponent, AActor* Othe
 		Widget->SetVisibility(EVisibility::Visible);
 	}
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), DeathTimeDilitation);
+	CleanGameplayKeyBindings();
 }
