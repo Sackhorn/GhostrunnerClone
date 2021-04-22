@@ -18,6 +18,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "WSFCharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/Image.h"
 #include "UMG/Public/Blueprint/UserWidget.h"
 #include "Widgets/Notifications/SProgressBar.h"
 
@@ -635,7 +636,6 @@ void AWSFCharacter::UpdateWallrunRotation(float DeltaSeconds)
 /// DASH
 
 //TODO: Slight player sway and rotation
-//TODO: Only start after pressed for longer than some debounce time
 void AWSFCharacter::BeginSidewaysDash()
 {
 	if(bIsDashDisabledTimeout)
@@ -694,6 +694,13 @@ void AWSFCharacter::UpdateDashIndicator(float Percentage)
 		ProgressBar->SetBarFillType(EProgressBarFillType::LeftToRight);
 	}
 	ProgressBar->SetPercent(FMath::Abs(timeElapsed));
+}
+
+void AWSFCharacter::UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility)
+{
+	UWidget* GrapplingHookIndicator = DashIndicatorWidget->GetWidgetFromName("GrapplingHookIndicator");
+	GrapplingHookIndicator->SetVisibility(Visibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	Cast<UImage>(GrapplingHookIndicator)->SetRenderTransform(FWidgetTransform(Position, FVector2D::UnitVector, FVector2D::ZeroVector, 0.0f));
 }
 
 ////////////////////////////////////////////////////////////////////////////

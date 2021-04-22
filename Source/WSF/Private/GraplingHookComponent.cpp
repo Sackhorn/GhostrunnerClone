@@ -7,6 +7,7 @@
 #include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PawnMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "WSF/WSFCharacterMovementComponent.h"
 
 // Sets default values for this component's properties
@@ -15,9 +16,9 @@ UGraplingHookComponent::UGraplingHookComponent()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
 	Sphere = CreateDefaultSubobject<USphereComponent>("SphereCollider");
 	Spline = CreateDefaultSubobject<USplineComponent>("SplineComponent");
-	Mesh->SetupAttachment(this);
-	Sphere->SetupAttachment(this);
-	Spline->SetupAttachment(this);
+	Mesh->SetupAttachment(this->GetAttachmentRoot());
+	Sphere->SetupAttachment(this->GetAttachmentRoot());
+	Spline->SetupAttachment(this->GetAttachmentRoot());
 
 	Sphere->OnComponentEndOverlap.AddDynamic(this, &UGraplingHookComponent::OnOverlapEnd);
 	
@@ -74,6 +75,7 @@ void UGraplingHookComponent::BeginPlay()
 	Super::BeginPlay();
 	PlayerCharacter = Cast<AWSFCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter());
 	PlayerCapsuleComponent = PlayerCharacter->GetCapsuleComponent();
+	PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 }
 
 void UGraplingHookComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
@@ -108,6 +110,10 @@ void UGraplingHookComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		{
     		PlayerCharacter->GrapplingHookVelocity= GetVelocityForCurve(PlayerCapsuleComponent->GetComponentLocation());
 			PlayerCharacter->bIsGrapplingHookAvailable = true;
+			FVector2D ScreenLocation;
+			bool isInScreen = UGameplayStatics::ProjectWorldToScreen(PlayerController.Get(), Mesh->GetComponentLocation(), ScreenLocation);
+			GEngine->AddOnScreenDebugMessage(345, 2.0f, FColor::Blue, ScreenLocation.ToString() + "" + (isInScreen ? TEXT("TRUE") : TEXT("FALSE")));
+			PlayerCharacter->UpdateGrapplingHookIndicator(ScreenLocation, isInScreen);
 			return;
 		}
 		PlayerCharacter->bIsGrapplingHookAvailable = false;

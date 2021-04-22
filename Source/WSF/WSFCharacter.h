@@ -296,7 +296,7 @@ public:
 	
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
-
+	void UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility);
 private:
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
