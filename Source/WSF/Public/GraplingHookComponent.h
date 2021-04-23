@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+#include "Engine/StaticMeshActor.h"
 
 class AWSFCharacter;
 #include "CoreMinimal.h"
@@ -10,14 +11,20 @@ class AWSFCharacter;
 #include "WSF/WSFCharacter.h"
 #include "GraplingHookComponent.generated.h"
 
+static TAutoConsoleVariable<bool> CVarShowGrapplingHook(
+	TEXT("ShowGrapplingHook"),
+	false,
+	TEXT("Shows grappling hook line trace vector\n"),
+	ECVF_Scalability | ECVF_RenderThreadSafe);
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class WSF_API UGraplingHookComponent : public USceneComponent
+class WSF_API AGraplingHookComponent : public AActor
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UGraplingHookComponent();
+	AGraplingHookComponent();
 
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* X, AActor* D, UPrimitiveComponent* Q, int32 RWA);
@@ -43,8 +50,5 @@ public:
 
 	FVector GetVelocityForCurve(const FVector& PlayerPosition);
 	virtual void BeginPlay() override;
-	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-		
+	virtual void Tick(float DeltaSeconds) override;
 };

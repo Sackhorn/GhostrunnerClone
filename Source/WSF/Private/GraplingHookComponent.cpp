@@ -3,6 +3,7 @@
 
 #include "GraplingHookComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/SphereComponent.h"
 #include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
@@ -11,16 +12,16 @@
 #include "WSF/WSFCharacterMovementComponent.h"
 
 // Sets default values for this component's properties
-UGraplingHookComponent::UGraplingHookComponent()
+AGraplingHookComponent::AGraplingHookComponent()
 {
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
 	Sphere = CreateDefaultSubobject<USphereComponent>("SphereCollider");
 	Spline = CreateDefaultSubobject<USplineComponent>("SplineComponent");
-	Mesh->SetupAttachment(this->GetAttachmentRoot());
-	Sphere->SetupAttachment(this->GetAttachmentRoot());
-	Spline->SetupAttachment(this->GetAttachmentRoot());
+	// Mesh->SetupAttachment(RootComponent);
+	// Sphere->SetupAttachment(RootComponent);
+	// Spline->SetupAttachment(RootComponent);
 
-	Sphere->OnComponentEndOverlap.AddDynamic(this, &UGraplingHookComponent::OnOverlapEnd);
+	Sphere->OnComponentEndOverlap.AddDynamic(this, &AGraplingHookComponent::OnOverlapEnd);
 	
 	//We create third point that constitutes our "parabola"  
 	Spline->AddSplinePointAtIndex(FVector(200.0, 0.0f, 0.0f), 2, ESplineCoordinateSpace::Local);
@@ -28,17 +29,16 @@ UGraplingHookComponent::UGraplingHookComponent()
 	{
 		Spline->SetSplinePointType(i, ESplinePointType::CurveClamped);	
 	}
-	PrimaryComponentTick.bCanEverTick = true;
 }
 
 //We need this to disable grappling hook when leaving Sphere Component 
-void UGraplingHookComponent::OnOverlapEnd(UPrimitiveComponent* X, AActor* D, UPrimitiveComponent* Q, int RWA)
+void AGraplingHookComponent::OnOverlapEnd(UPrimitiveComponent* X, AActor* D, UPrimitiveComponent* Q, int RWA)
 {
 	GEngine->AddOnScreenDebugMessage(111, 2.0f, FColor::Blue, D->GetName());
 	PlayerCharacter->bIsGrapplingHookAvailable = false;
 }
 
-FVector UGraplingHookComponent::GetVelocityForCurve(const FVector& PlayerPosition)
+FVector AGraplingHookComponent::GetVelocityForCurve(const FVector& PlayerPosition)
 {
 	const FVector& CurveTopPosition = Spline->GetLocationAtSplinePoint(1.0, ESplineCoordinateSpace::World);
 	FVector LandingPosition;
@@ -70,7 +70,7 @@ FVector UGraplingHookComponent::GetVelocityForCurve(const FVector& PlayerPositio
 	return VerticalVel + HorizontalVel;
 }
 
-void UGraplingHookComponent::BeginPlay()
+void AGraplingHookComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	PlayerCharacter = Cast<AWSFCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter());
@@ -78,21 +78,14 @@ void UGraplingHookComponent::BeginPlay()
 	PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 }
 
-void UGraplingHookComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
-{
-	Super::OnComponentDestroyed(bDestroyingHierarchy);
-	Spline->DestroyComponent();
-	Sphere->DestroyComponent();
-	Mesh->DestroyComponent();
-}
 
-void UGraplingHookComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void AGraplingHookComponent::Tick(float DeltaTime)
 {
 	if(PlayerCharacter==nullptr)
 	{
 		return;
 	}
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Super::Tick(DeltaTime);
 	UWSFCharacterMovementComponent* MovementComponent = Cast<UWSFCharacterMovementComponent>(PlayerCharacter->GetMovementComponent());
 	bool bIsGrapplingHook = MovementComponent->MovementMode == MOVE_Custom && MovementComponent->CustomMovementMode == CUSTOM_GrapplingHook;
 	if(Sphere->IsOverlappingComponent(PlayerCapsuleComponent.Get()) && !bIsGrapplingHook)
@@ -104,19 +97,23 @@ void UGraplingHookComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
 		QueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
 		QueryParams.AddObjectTypesToQuery(ECC_Pawn);
-		DrawDebugDirectionalArrow(GetWorld(), ComponentLocation, PlayerCapsuleLocation, 10.0f, FColor::Red, false, -1, 0, 3.0f);
+		if(CVarShowGrapplingHook.GetValueOnGameThread())
+		{
+			DrawDebugDirectionalArrow(GetWorld(), ComponentLocation, PlayerCapsuleLocation, 10.0f, FColor::Red, false, -1, 0, 3.0f);
+		}
 		GetWorld()->LineTraceSingleByObjectType(Hit, ComponentLocation, PlayerCapsuleLocation, QueryParams);
 		if(Hit.IsValidBlockingHit() && Hit.Actor == PlayerCapsuleComponent->GetOwner())
 		{
-    		PlayerCharacter->GrapplingHookVelocity= GetVelocityForCurve(PlayerCapsuleComponent->GetComponentLocation());
-			PlayerCharacter->bIsGrapplingHookAvailable = true;
 			FVector2D ScreenLocation;
-			bool isInScreen = UGameplayStatics::ProjectWorldToScreen(PlayerController.Get(), Mesh->GetComponentLocation(), ScreenLocation);
-			GEngine->AddOnScreenDebugMessage(345, 2.0f, FColor::Blue, ScreenLocation.ToString() + "" + (isInScreen ? TEXT("TRUE") : TEXT("FALSE")));
-			PlayerCharacter->UpdateGrapplingHookIndicator(ScreenLocation, isInScreen);
+			UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(PlayerController.Get(), GetActorLocation(), ScreenLocation, false);
+			bool bIsInScreen = Mesh->WasRecentlyRendered(0.1);
+			GEngine->AddOnScreenDebugMessage(345, 2.0f, FColor::Blue, ScreenLocation.ToString() + "" + (bIsInScreen ? TEXT("TRUE") : TEXT("FALSE")));
+			PlayerCharacter->bIsGrapplingHookAvailable = bIsInScreen;
+			PlayerCharacter->GrapplingHookVelocity= GetVelocityForCurve(PlayerCapsuleComponent->GetComponentLocation());
+			PlayerCharacter->UpdateGrapplingHookIndicator(FVector2D::Max(ScreenLocation, FVector2D::ZeroVector), bIsInScreen);
 			return;
 		}
 		PlayerCharacter->bIsGrapplingHookAvailable = false;
 	}
-	
+	PlayerCharacter->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
 }

@@ -699,8 +699,11 @@ void AWSFCharacter::UpdateDashIndicator(float Percentage)
 void AWSFCharacter::UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility)
 {
 	UWidget* GrapplingHookIndicator = DashIndicatorWidget->GetWidgetFromName("GrapplingHookIndicator");
-	GrapplingHookIndicator->SetVisibility(Visibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	Cast<UImage>(GrapplingHookIndicator)->SetRenderTransform(FWidgetTransform(Position, FVector2D::UnitVector, FVector2D::ZeroVector, 0.0f));
+	if(GrapplingHookIndicator)
+	{
+		GrapplingHookIndicator->SetVisibility(Visibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+		Cast<UImage>(GrapplingHookIndicator)->SetRenderTransform(FWidgetTransform(Position, FVector2D::UnitVector, FVector2D::ZeroVector, 0.0f));
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////
