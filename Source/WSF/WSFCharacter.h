@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "WSFHUD.h"
 #include "GameFramework/Character.h"
 
 #include "WSFCharacter.generated.h"
@@ -21,7 +23,7 @@ class AWSFCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	
+	TWeakObjectPtr<AWSFHUD> PlayerHUD;	
 	// static void SwitchCamerasWrapper(IConsoleVariable* Var);
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category=Mesh)
@@ -103,8 +105,6 @@ public:
 	/** Whether to use motion controller location for aiming. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 	uint32 bUsingMotionControllers : 1;
-
-	TArray<TSharedPtr<SWidget>> BloodSplashes;
 
 protected:
 	
@@ -240,9 +240,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Dash)
 	float DashTimeDilation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Dash)
-	UClass* DashIndicatorWidgetClass;
-
 	/** Here we handle going in and out of Dash and Wallrun Custom Movement Modes */
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode) override;
 	
@@ -304,8 +301,6 @@ private:
 	//////////////////////////////////////////////////////////////
 	/*                       DASH                               */
 	void Dash();
-	void UpdateDashIndicator(float Percentage=1.0f);
-	TSharedPtr<SWidget> DashIndicatorProgressBar;
 		
 	UFUNCTION()
 	void RenableDash()
@@ -313,8 +308,6 @@ private:
 		bIsDashDisabledTimeout = false;
 	}
 	
-	UPROPERTY()
-	UUserWidget* DashIndicatorWidget;
 	
 	//////////////////////////////////////////////////////////////
 	/*                       SIDEWAYS DASH                     */

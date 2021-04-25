@@ -44,6 +44,7 @@ public:
 	TWeakObjectPtr<UCapsuleComponent> PlayerCapsuleComponent;
 	TWeakObjectPtr<AWSFCharacter> PlayerCharacter;
 	TWeakObjectPtr<APlayerController> PlayerController;
+	TWeakObjectPtr<AWSFHUD> PlayerHUD;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float CurveTime = 1.0f;

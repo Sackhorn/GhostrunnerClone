@@ -17,10 +17,8 @@ AGraplingHookComponent::AGraplingHookComponent()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
 	Sphere = CreateDefaultSubobject<USphereComponent>("SphereCollider");
 	Spline = CreateDefaultSubobject<USplineComponent>("SplineComponent");
-	// Mesh->SetupAttachment(RootComponent);
-	// Sphere->SetupAttachment(RootComponent);
-	// Spline->SetupAttachment(RootComponent);
-
+	SetRootComponent(Mesh);
+	
 	Sphere->OnComponentEndOverlap.AddDynamic(this, &AGraplingHookComponent::OnOverlapEnd);
 	
 	//We create third point that constitutes our "parabola"  
@@ -76,6 +74,7 @@ void AGraplingHookComponent::BeginPlay()
 	PlayerCharacter = Cast<AWSFCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter());
 	PlayerCapsuleComponent = PlayerCharacter->GetCapsuleComponent();
 	PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	PlayerHUD = Cast<AWSFHUD>(PlayerController->GetHUD());
 }
 
 
@@ -110,10 +109,10 @@ void AGraplingHookComponent::Tick(float DeltaTime)
 			GEngine->AddOnScreenDebugMessage(345, 2.0f, FColor::Blue, ScreenLocation.ToString() + "" + (bIsInScreen ? TEXT("TRUE") : TEXT("FALSE")));
 			PlayerCharacter->bIsGrapplingHookAvailable = bIsInScreen;
 			PlayerCharacter->GrapplingHookVelocity= GetVelocityForCurve(PlayerCapsuleComponent->GetComponentLocation());
-			PlayerCharacter->UpdateGrapplingHookIndicator(FVector2D::Max(ScreenLocation, FVector2D::ZeroVector), bIsInScreen);
+			PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::Max(ScreenLocation, FVector2D::ZeroVector), bIsInScreen);
 			return;
 		}
 		PlayerCharacter->bIsGrapplingHookAvailable = false;
 	}
-	PlayerCharacter->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
+	PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
 }

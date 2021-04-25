@@ -17,6 +17,7 @@
 #include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
 #include "GameFramework/CharacterMovementComponent.h"
 #include "WSFCharacterMovementComponent.h"
+#include "WSFHUD.h"
 #include "Components/BoxComponent.h"
 #include "Components/Image.h"
 #include "UMG/Public/Blueprint/UserWidget.h"
@@ -160,6 +161,7 @@ void AWSFCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+	PlayerHUD = Cast<AWSFHUD>(Cast<APlayerController>(Controller)->GetHUD());
 	ReceiveHitCapsule->OnComponentBeginOverlap.AddDynamic(this, &AWSFCharacter::OnHit);
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	// FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -177,20 +179,6 @@ void AWSFCharacter::BeginPlay()
 	{
 		VR_Gun->SetHiddenInGame(true, true);
 		Mesh1P->SetHiddenInGame(false, true);
-	}
-	
-	if(DashIndicatorWidgetClass != nullptr)
-	{
-		DashIndicatorWidget = CreateWidget(Cast<APlayerController>(GetController()), DashIndicatorWidgetClass, FName(TEXT("DashIndicator")));
-		DashIndicatorWidget->AddToViewport();
-		auto Widget = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("ProgressBar_0")));
-		DashIndicatorProgressBar = MoveTemp(Widget);
-		auto Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image")));
-		BloodSplashes.Add(MoveTemp(Image));
-		Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image_1")));
-		BloodSplashes.Add(MoveTemp(Image));
-		Image = DashIndicatorWidget->GetSlateWidgetFromName(FName(TEXT("Image_2")));
-		BloodSplashes.Add(MoveTemp(Image));
 	}
 }
 
@@ -395,7 +383,7 @@ void AWSFCharacter::Tick(float DeltaSeconds)
 	{
 		UpdateWallrunRotation(DeltaSeconds);
 	}
-	UpdateDashIndicator();
+	PlayerHUD->UpdateDashIndicator(SidewayDashTimer, DashDisablerTimer);
 }
 
 void AWSFCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
@@ -678,34 +666,6 @@ void AWSFCharacter::Dash()
 	GetWorldTimerManager().SetTimer(DashDisablerTimer, this, &AWSFCharacter::RenableDash, DashTimeout+MovementComponent->DashDuration, false);
 }
 
-void AWSFCharacter::UpdateDashIndicator(float Percentage)
-{
-	UWSFCharacterMovementComponent* MovementComponent = static_cast<UWSFCharacterMovementComponent*>(GetMovementComponent());
-	auto ProgressBar = (SProgressBar*)DashIndicatorProgressBar.Get();
-	float timeElapsed;
-	if(MovementComponent->MovementMode == MOVE_Custom && MovementComponent->CustomMovementMode == CUSTOM_SidewaysDash)
-	{
-		timeElapsed = GetWorldTimerManager().GetTimerElapsed(SidewayDashTimer)/GetWorldTimerManager().GetTimerRate(SidewayDashTimer);
-		ProgressBar->SetBarFillType(EProgressBarFillType::RightToLeft);
-	}
-	else
-	{
-		timeElapsed = GetWorldTimerManager().GetTimerElapsed(DashDisablerTimer)/GetWorldTimerManager().GetTimerRate(DashDisablerTimer);
-		ProgressBar->SetBarFillType(EProgressBarFillType::LeftToRight);
-	}
-	ProgressBar->SetPercent(FMath::Abs(timeElapsed));
-}
-
-void AWSFCharacter::UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility)
-{
-	UWidget* GrapplingHookIndicator = DashIndicatorWidget->GetWidgetFromName("GrapplingHookIndicator");
-	if(GrapplingHookIndicator)
-	{
-		GrapplingHookIndicator->SetVisibility(Visibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-		Cast<UImage>(GrapplingHookIndicator)->SetRenderTransform(FWidgetTransform(Position, FVector2D::UnitVector, FVector2D::ZeroVector, 0.0f));
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////
 /// GRAPPLING HOOK
 
@@ -734,10 +694,7 @@ void AWSFCharacter::CleanGameplayKeyBindings()
 
 void AWSFCharacter::OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	for(TSharedPtr<SWidget> Widget : BloodSplashes)
-	{
-		Widget->SetVisibility(EVisibility::Visible);
-	}
+	PlayerHUD->OnDead();
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), DeathTimeDilitation);
 	CleanGameplayKeyBindings();
 }
