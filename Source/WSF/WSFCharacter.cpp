@@ -2,7 +2,6 @@
 
 #include "WSFCharacter.h"
 
-// #include "AITypes.h"
 #include "DrawDebugHelpers.h"
 #include "EnemyBaseCharacter.h"
 #include "Animation/AnimInstance.h"
@@ -21,7 +20,6 @@
 #include "Components/BoxComponent.h"
 #include "Components/Image.h"
 #include "UMG/Public/Blueprint/UserWidget.h"
-#include "Widgets/Notifications/SProgressBar.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -60,6 +58,9 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
 	ReceiveHitCapsule = CreateDefaultSubobject<UCapsuleComponent>("ReceiveHitCapsule");
 	ReceiveHitCapsule->SetupAttachment(RootComponent);
 	ReceiveHitCapsule->InitCapsuleSize(130.0f, 80.0f);
+
+	
+	
 	
 
 	// set our turn rates for input
@@ -105,6 +106,10 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UWSFCharacterMovementComponent>
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
 	Mesh1P->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
+
+	HookEmmiter = CreateDefaultSubobject<UNiagaraComponent>(TEXT("HookEmmiter"));
+	HookEmmiter->SetupAttachment(Mesh1P);
+	HookEmmiter->Deactivate();
 
 	// Create a gun mesh component
 	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
@@ -224,7 +229,7 @@ void AWSFCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &AWSFCharacter::BeginSidewaysDash);
 	PlayerInputComponent->BindAction("Dash", IE_Released, this, &AWSFCharacter::EndSidewayDash);
 
-	PlayerInputComponent->BindAction("GrapplingHook", IE_Pressed, this, &AWSFCharacter::BeginGrapplingHook);
+	PlayerInputComponent->BindAction("GrapplingHook", IE_Pressed, this, &AWSFCharacter::OnGrapplingHook);
 }
 
 void AWSFCharacter::TryPerformAttack()
@@ -266,10 +271,10 @@ void AWSFCharacter::TryPerformAttack()
 void AWSFCharacter::OnFire()
 {
 	// try and play the sound if specified
-	if (FireSound != NULL)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
-	}
+	// if (FireSound != NULL)
+	// {
+		// UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+	// }
 
 	// try and play a firing animation if specified
 	if (FireAnimation != NULL)
@@ -281,6 +286,20 @@ void AWSFCharacter::OnFire()
 		if (AnimInstance != NULL && !isTheSame)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
+		}
+	}
+}
+
+void AWSFCharacter::OnGrapplingHook()
+{
+	if (GrapplingMontage != NULL && bIsGrapplingHookAvailable)
+	{
+		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+		UAnimMontage* Montage = AnimInstance->GetCurrentActiveMontage();
+		bool isTheSame = Montage == GrapplingMontage;
+		if (AnimInstance != NULL && !isTheSame)
+		{
+			AnimInstance->Montage_Play(GrapplingMontage, 1.f);
 		}
 	}
 }
@@ -365,6 +384,7 @@ bool AWSFCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInput
 
 void AWSFCharacter::Tick(float DeltaSeconds)
 {
+	CharacterAditionalTicks.Broadcast();
 	TryPerformAttack();
 	bIsWallrunAvailable = WallrunCheckAndTick() && !bIsWallrunDisabledTimeout;
 	TEnumAsByte<EMovementMode> MovementMode =  GetCharacterMovement()->MovementMode;
@@ -671,11 +691,10 @@ void AWSFCharacter::Dash()
 
 void AWSFCharacter::BeginGrapplingHook()
 {
-	if(bIsGrapplingHookAvailable)
-	{
+		HookEmmiter->Deactivate();
+		CharacterAditionalTicks.Clear();	
 		UWSFCharacterMovementComponent* MovementComponent = static_cast<UWSFCharacterMovementComponent*>(GetMovementComponent());
 		MovementComponent->SetMovementMode(MOVE_Custom, CUSTOM_GrapplingHook);
-	}
 }
 
 void AWSFCharacter::CleanGameplayKeyBindings()
@@ -697,4 +716,26 @@ void AWSFCharacter::OnHit(UPrimitiveComponent* OverlappedComponent, AActor* Othe
 	PlayerHUD->OnDead();
 	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), DeathTimeDilitation);
 	CleanGameplayKeyBindings();
+}
+
+void AWSFCharacter::UpdateGrapplingEmitter()
+{
+	FVector SocketLocation = Mesh1P->GetSocketLocation("grappling_socket");
+	HookEmmiter->SetWorldLocation(SocketLocation);
+	auto Rotation = UKismetMathLibrary::FindLookAtRotation(SocketLocation, GrapplingHookLocation);
+	HookEmmiter->SetWorldRotation(Rotation);
+	float Dist = FVector::Distance(SocketLocation, GrapplingHookLocation);
+	HookEmmiter->SetVectorParameter("User.BeamEnd", FVector(Dist, 0.0f, 0.0f));
+}
+
+void AWSFCharacter::PreBeginGrapplingHook()
+{
+	UpdateGrapplingEmitter();
+	HookEmmiter->ResetSystem();
+	HookEmmiter->Activate();
+	
+	CharacterAditionalTicks.AddWeakLambda(this, [this]()
+	{
+		UpdateGrapplingEmitter();
+	});
 }

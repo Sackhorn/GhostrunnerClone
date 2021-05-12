@@ -30,7 +30,7 @@ public:
 	virtual void DrawHUD() override;
 	void OnDead();
 	void UpdateDashIndicator(const FTimerHandle& SidewayDashTimer, const FTimerHandle& DashDisablerTimer);
-	void UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility);
+	void UpdateGrapplingHookIndicator(FVector2D ScreenPosition, bool Visibility);
 
 private:
 	uint8 WidgetZOrder = 0;

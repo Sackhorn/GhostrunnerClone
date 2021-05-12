@@ -34,6 +34,10 @@ AEnemyBaseCharacter::AEnemyBaseCharacter()
 	ProcMesh2 = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMesh2"));
 	ProcMesh2->SetupAttachment(RootComponent);
 	ProcMesh2->SetVisibility(false);
+
+	SkelMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh2"));
+	SkelMesh->SetupAttachment(RootComponent);
+	SkelMesh->SetVisibility(true);
 }
 
 void AEnemyBaseCharacter::BeginPlay()

@@ -79,8 +79,8 @@ void AWSFHUD::UpdateDashIndicator(const FTimerHandle& SidewayDashTimer, const FT
 	ProgressBar->SetPercent(FMath::Abs(timeElapsed));
 }
 
-void AWSFHUD::UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility)
+void AWSFHUD::UpdateGrapplingHookIndicator(FVector2D ScreenPosition, bool Visibility)
 {
 	GrapplingHookIndicator->SetVisibility(Visibility ? EVisibility::Visible : EVisibility::Hidden);
-	GrapplingHookIndicator->SetRenderTransform(FTransform2D(Position));
+	GrapplingHookIndicator->SetRenderTransform(FTransform2D(ScreenPosition));
 }

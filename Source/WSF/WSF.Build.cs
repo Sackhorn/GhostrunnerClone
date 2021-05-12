@@ -21,7 +21,8 @@ public class WSF : ModuleRules
 			"ProceduralMeshComponent", 
 			"RenderCore", 
 			"RHI", 
-			"AIModule"
+			"AIModule",
+			"Niagara"
 		});
 	}
 }

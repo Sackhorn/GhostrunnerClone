@@ -34,6 +34,7 @@ void AGraplingHookComponent::OnOverlapEnd(UPrimitiveComponent* X, AActor* D, UPr
 {
 	GEngine->AddOnScreenDebugMessage(111, 2.0f, FColor::Blue, D->GetName());
 	PlayerCharacter->bIsGrapplingHookAvailable = false;
+	PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
 }
 
 FVector AGraplingHookComponent::GetVelocityForCurve(const FVector& PlayerPosition)
@@ -77,14 +78,13 @@ void AGraplingHookComponent::BeginPlay()
 	PlayerHUD = Cast<AWSFHUD>(PlayerController->GetHUD());
 }
 
-
 void AGraplingHookComponent::Tick(float DeltaTime)
 {
+	Super::Tick(DeltaTime);
 	if(PlayerCharacter==nullptr)
 	{
 		return;
 	}
-	Super::Tick(DeltaTime);
 	UWSFCharacterMovementComponent* MovementComponent = Cast<UWSFCharacterMovementComponent>(PlayerCharacter->GetMovementComponent());
 	bool bIsGrapplingHook = MovementComponent->MovementMode == MOVE_Custom && MovementComponent->CustomMovementMode == CUSTOM_GrapplingHook;
 	if(Sphere->IsOverlappingComponent(PlayerCapsuleComponent.Get()) && !bIsGrapplingHook)
@@ -109,10 +109,11 @@ void AGraplingHookComponent::Tick(float DeltaTime)
 			GEngine->AddOnScreenDebugMessage(345, 2.0f, FColor::Blue, ScreenLocation.ToString() + "" + (bIsInScreen ? TEXT("TRUE") : TEXT("FALSE")));
 			PlayerCharacter->bIsGrapplingHookAvailable = bIsInScreen;
 			PlayerCharacter->GrapplingHookVelocity= GetVelocityForCurve(PlayerCapsuleComponent->GetComponentLocation());
+			PlayerCharacter->SetGrapplingHookLocation(Mesh->GetComponentLocation());
 			PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::Max(ScreenLocation, FVector2D::ZeroVector), bIsInScreen);
 			return;
 		}
 		PlayerCharacter->bIsGrapplingHookAvailable = false;
 	}
-	PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
+	// PlayerHUD->UpdateGrapplingHookIndicator(FVector2D::ZeroVector, false);
 }

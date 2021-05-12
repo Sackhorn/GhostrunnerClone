@@ -6,6 +6,9 @@
 
 #include "WSFHUD.h"
 #include "GameFramework/Character.h"
+#include "NiagaraComponent.h"
+#include "NiagaraEmitter.h"
+#include "Kismet/KismetMathLibrary.h"
 
 #include "WSFCharacter.generated.h"
 
@@ -16,13 +19,16 @@ enum ETraceSide: int
     DeffectiveTrace = -1
 };
 
+
+DECLARE_MULTICAST_DELEGATE(AditionalTicks)
 class UInputComponent;
 
 UCLASS(config=Game)
 class AWSFCharacter : public ACharacter
 {
 	GENERATED_BODY()
-
+	
+	AditionalTicks CharacterAditionalTicks;
 	TWeakObjectPtr<AWSFHUD> PlayerHUD;	
 	// static void SwitchCamerasWrapper(IConsoleVariable* Var);
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
@@ -261,10 +267,31 @@ public:
 	/*                       GRAPPLING HOOK                              */
 	bool bIsGrapplingHookAvailable;
 	FVector GrapplingHookVelocity;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=GrapplingHook)
+	UAnimMontage* GrapplingMontage;
+
+	UFUNCTION(BlueprintCallable)
 	void BeginGrapplingHook();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=GrapplingHook)
+	UNiagaraComponent* HookEmmiter;
+	
 	void CleanGameplayKeyBindings();
+	void SetGrapplingHookLocation(const FVector& HookLocation)
+	{
+		this->GrapplingHookLocation=HookLocation;
+	}
+	
+private:
+	FVector GrapplingHookLocation;
+	void UpdateGrapplingEmitter();
+	void OnGrapplingHook();
+	
+	UFUNCTION(BlueprintCallable)
+	void PreBeginGrapplingHook();
 
-
+public:
 	float GravityCoefficient;
 
 	////////////////////////////////////////////////////////////////////////
@@ -293,7 +320,7 @@ public:
 	
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
-	void UpdateGrapplingHookIndicator(FVector2D Position, bool Visibility);
+
 private:
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
