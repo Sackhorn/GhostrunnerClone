@@ -706,7 +706,7 @@ void AWSFCharacter::CleanGameplayKeyBindings()
 	FInputActionBinding ResetPressed("Reset", IE_Pressed);
 	ResetPressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
 	{
-		UGameplayStatics::OpenLevel(GetWorld(), "FirstPersonExampleMap");
+		UGameplayStatics::OpenLevel(GetWorld(), "TutorialMap");
 	});
 	InputComponent->AddActionBinding(ResetPressed);
 }
