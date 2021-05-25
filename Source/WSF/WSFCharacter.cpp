@@ -198,7 +198,7 @@ void AWSFCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	FInputActionBinding ResetPressed("Reset", IE_Pressed);
 	ResetPressed.ActionDelegate.GetDelegateForManualSet().BindLambda([this]()
 	{
-		UGameplayStatics::OpenLevel(GetWorld(), "FirstPersonExampleMap");
+		UGameplayStatics::OpenLevel(GetWorld(), "TutorialMap");
 	});
 	PlayerInputComponent->AddActionBinding(ResetPressed);
 

@@ -68,7 +68,16 @@ void AEnemyBaseCharacter::OnDeath(const FVector& ForceDirection)
 
 void AEnemyBaseCharacter::DisableAI()
 {
-	Cast<AAIController>(GetController())->BrainComponent->Deactivate();
+	auto AController = GetController();
+	if(AController)
+	{
+		auto AIController = Cast<AAIController>(AController);
+		if(AIController)
+		{
+			AIController->BrainComponent->Deactivate();
+		}
+	}
+	
 }
 
 void AEnemyBaseCharacter::DetachGun()
